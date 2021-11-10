@@ -55,9 +55,45 @@ resource aws_autoscaling_group "asg" {
 
   tag {
       key                 = "Name"
-      value               = "var.cluster_name"
+      value               = var.cluster_name
       propagate_at_launch = true
     }
+
+    dynamic "tag"{
+      for_each = var.custom_tags
+
+      content {
+        key = tag.key
+        value = tag.value
+        propagate_at_launch = true
+      }
+    }
+}
+
+// autostcaling with IF statement
+// <CONDITION> ? <TRUE_VAL> : <FALSE_VAL>
+// If the result is true, it will return TRUE_VAL, and if the result is false, it’ll return FALSE_VAL.
+
+resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  scheduled_action_name = "${var.cluster_name}-scale-out-during-business-hours"
+  min_size = 2
+  max_size = 10
+  desired_capacity = 10
+  recurrence = "0 9 * * *"
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+}
+
+resource "aws_autoscaling_schedule" "scale_in_at_night" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  scheduled_action_name = "${var.cluster_name}-scale-in-at-night"
+  min_size = 2
+  max_size = 10
+  desired_capacity = 2
+  recurrence = "0 17 * * *"
+  autoscaling_group_name = aws_autoscaling_group.asg.name
 }
 
 // Instruct terraform to find default VPC
